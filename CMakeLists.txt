@@ -21,20 +21,30 @@ project (pulsar-client-python)
 cmake_minimum_required(VERSION 3.12)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake_modules")
 
+option(LINK_PULSAR_CPP_DEPS "Whether link to dependencies of pulsar-client-cpp" ON)
+
+file(STRINGS "PULSAR_CPP_VERSION" PULSAR_VERSION)
+message(STATUS "PULSAR_VERSION: " ${PULSAR_VERSION})
+add_definitions("-DPULSAR_VERSION=${PULSAR_VERSION}")
+
 MESSAGE(STATUS "CMAKE_BUILD_TYPE:  " ${CMAKE_BUILD_TYPE})
 set(THREADS_PREFER_PTHREAD_FLAG TRUE)
 find_package(Threads REQUIRED)
 MESSAGE(STATUS "Threads library: " ${CMAKE_THREAD_LIBS_INIT})
 
 
-find_library(PULSAR_LIBRARY NAMES libpulsar.a)
-message(STATUS "PULSAR_LIBRARY: ${PULSAR_LIBRARY}")
+if (LINK_PULSAR_CPP_DEPS)
+    find_library(PULSAR_LIBRARY NAMES libpulsar.a)
+    message(STATUS "PULSAR_LIBRARY: ${PULSAR_LIBRARY}")
+else ()
+    find_library(PULSAR_LIBRARY NAMES libpulsarwithdeps.a)
+    message(STATUS "PULSAR_LIBRARY: ${PULSAR_LIBRARY}")
+endif ()
 
 find_path(PULSAR_INCLUDE pulsar/Client.h)
 message(STATUS "PULSAR_INCLUDE: ${PULSAR_INCLUDE}")
 
 SET(Boost_NO_BOOST_CMAKE ON)
-SET(Boost_USE_STATIC_LIBS   ON)
 
 SET(CMAKE_CXX_STANDARD 11)
 
@@ -49,10 +59,16 @@ set(BOOST_PYTHON_NAME_POSTFIX ${Python3_VERSION_MAJOR}${Python3_VERSION_MINOR})
 # For python3 the lib name is boost_python3
 set(BOOST_PYTHON_NAME_LIST python${BOOST_PYTHON_NAME_POSTFIX};python37;python38;python39;python310;python3;python3-mt;python-py${BOOST_PYTHON_NAME_POSTFIX};python${BOOST_PYTHON_NAME_POSTFIX}-mt)
 
+if (Boost_USE_STATIC_LIBS)
+    add_definitions("-DBOOST_PYTHON_STATIC_LIB")
+else ()
+    message(WARNING " Boost_USE_STATIC_LIBS is OFF, which should only be used for tests")
+endif ()
 foreach (BOOST_PYTHON_NAME IN LISTS BOOST_PYTHON_NAME_LIST)
     find_package(Boost QUIET COMPONENTS ${BOOST_PYTHON_NAME})
     if (${Boost_FOUND})
         set(BOOST_PYTHON_NAME_FOUND ${BOOST_PYTHON_NAME})
+        message(STATUS "Found Boost.Python for component " ${BOOST_PYTHON_NAME})
         break()
     endif()
 endforeach()
@@ -63,6 +79,7 @@ endif ()
 
 MESSAGE(STATUS "BOOST_PYTHON_NAME_FOUND: " ${BOOST_PYTHON_NAME_FOUND})
 
+# OpenSSL is not included in libpulsarwithdeps.a, so we still need to add OpenSSL dependency
 set(OPENSSL_ROOT_DIR ${OPENSSL_ROOT_DIR} /usr/lib64/)
 
 ### This part is to find and keep SSL dynamic libs in RECORD_OPENSSL_SSL_LIBRARY and RECORD_OPENSSL_CRYPTO_LIBRARY
@@ -71,23 +88,24 @@ if (APPLE)
     set(OPENSSL_INCLUDE_DIR /usr/local/opt/openssl/include/ /opt/homebrew/opt/openssl/include)
     set(OPENSSL_ROOT_DIR ${OPENSSL_ROOT_DIR} /usr/local/opt/openssl/ /opt/homebrew/opt/openssl)
 endif ()
-
 set(OPENSSL_USE_STATIC_LIBS TRUE)
 find_package(OpenSSL REQUIRED)
 
-find_library(ZLIB_LIBRARIES REQUIRED NAMES libz.a z zlib)
-message(STATUS "ZLIB_LIBRARIES: ${ZLIB_LIBRARIES}")
+if (LINK_PULSAR_CPP_DEPS)
+    find_library(ZLIB_LIBRARIES REQUIRED NAMES libz.a z zlib)
+    message(STATUS "ZLIB_LIBRARIES: ${ZLIB_LIBRARIES}")
 
-find_library(CURL_LIBRARIES NAMES libcurl.a curl curl_a libcurl_a)
-message(STATUS "CURL_LIBRARIES: ${CURL_LIBRARIES}")
-find_library(Protobuf_LIBRARIES NAMES libprotobuf.a libprotobuf)
-message(STATUS "Protobuf: ${Protobuf_LIBRARIES}")
-find_library(CURL_LIBRARIES NAMES libcurl.a curl curl_a libcurl_a)
-message(STATUS "CURL_LIBRARIES: ${CURL_LIBRARIES}")
-find_library(LIB_ZSTD NAMES libzstd.a)
-message(STATUS "ZStd: ${LIB_ZSTD}")
-find_library(LIB_SNAPPY NAMES libsnappy.a)
-message(STATUS "LIB_SNAPPY: ${LIB_SNAPPY}")
+    find_library(CURL_LIBRARIES NAMES libcurl.a curl curl_a libcurl_a)
+    message(STATUS "CURL_LIBRARIES: ${CURL_LIBRARIES}")
+    find_library(Protobuf_LIBRARIES NAMES libprotobuf.a libprotobuf)
+    message(STATUS "Protobuf: ${Protobuf_LIBRARIES}")
+    find_library(CURL_LIBRARIES NAMES libcurl.a curl curl_a libcurl_a)
+    message(STATUS "CURL_LIBRARIES: ${CURL_LIBRARIES}")
+    find_library(LIB_ZSTD NAMES libzstd.a)
+    message(STATUS "ZStd: ${LIB_ZSTD}")
+    find_library(LIB_SNAPPY NAMES libsnappy.a)
+    message(STATUS "LIB_SNAPPY: ${LIB_SNAPPY}")
+endif ()
 
 ########################################################################################################################
 

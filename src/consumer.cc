@@ -17,6 +17,7 @@
  * under the License.
  */
 #include "utils.h"
+#include <stdexcept>
 
 void Consumer_unsubscribe(Consumer& consumer) {
     waitForAsyncResult([&consumer](ResultCallback callback) { consumer.unsubscribeAsync(callback); });
@@ -84,6 +85,9 @@ void Consumer_seek_timestamp(Consumer& consumer, uint64_t timestamp) {
 bool Consumer_is_connected(Consumer& consumer) { return consumer.isConnected(); }
 
 MessageId Consumer_get_last_message_id(Consumer& consumer) {
+#if defined(PULSAR_VERSION) && PULSAR_VERSION < 3000000
+    throw std::runtime_error("get_last_message_id is not supported");
+#else
     MessageId msgId;
     Result res;
     Py_BEGIN_ALLOW_THREADS res = consumer.getLastMessageId(msgId);
@@ -91,6 +95,7 @@ MessageId Consumer_get_last_message_id(Consumer& consumer) {
 
         CHECK_RESULT(res);
     return msgId;
+#endif
 }
 
 void export_consumer() {

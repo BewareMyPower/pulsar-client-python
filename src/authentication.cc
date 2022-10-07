@@ -90,12 +90,14 @@ struct AuthenticationOauth2Wrapper : public AuthenticationWrapper {
     }
 };
 
+#if defined(PULSAR_VERSION) && PULSAR_VERSION >= 3000000
 struct AuthenticationBasicWrapper : public AuthenticationWrapper {
     AuthenticationBasicWrapper(const std::string& username, const std::string& password)
         : AuthenticationWrapper() {
         this->auth = AuthBasic::create(username, password);
     }
 };
+#endif
 
 void export_authentication() {
     using namespace boost::python;
@@ -114,6 +116,8 @@ void export_authentication() {
     class_<AuthenticationOauth2Wrapper, bases<AuthenticationWrapper> >("AuthenticationOauth2",
                                                                        init<const std::string&>());
 
+#if defined(PULSAR_VERSION) && PULSAR_VERSION >= 3000000
     class_<AuthenticationBasicWrapper, bases<AuthenticationWrapper> >(
         "AuthenticationBasic", init<const std::string&, const std::string&>());
+#endif
 }
