@@ -17,15 +17,12 @@
 # under the License.
 #
 
-project (pulsar-client-python)
 cmake_minimum_required(VERSION 3.18)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake_modules")
 
-if (VCPKG_TRIPLET)
-    message(STATUS "Use vcpkg, triplet is ${VCPKG_TRIPLET}")
-    set(CMAKE_PREFIX_PATH "${CMAKE_SOURCE_DIR}/vcpkg_installed/${VCPKG_TRIPLET}" ${CMAKE_PREFIX_PATH})
-    message(STATUS "Use CMAKE_PREFIX_PATH: ${CMAKE_PREFIX_PATH}")
-endif ()
+set(CMAKE_TOOLCHAIN_FILE "${CMAKE_SOURCE_DIR}/vcpkg/scripts/buildsystems/vcpkg.cmake"
+  CACHE STRING "Vcpkg toolchain file")
+project (pulsar-client-python)
 option(LINK_STATIC "Link against static libraries" OFF)
 MESSAGE(STATUS "LINK_STATIC:  " ${LINK_STATIC})
 
@@ -41,9 +38,6 @@ endif ()
 if (LINK_STATIC)
     if (MSVC)
         find_library(PULSAR_LIBRARY NAMES pulsarWithDeps.lib)
-        string(REGEX REPLACE "/MD" "/MT" CMAKE_CXX_FLAGS_DEBUG ${CMAKE_CXX_FLAGS_DEBUG})
-        string(REGEX REPLACE "/MD" "/MT" CMAKE_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS_RELEASE})
-        string(REGEX REPLACE "/MD" "/MT" CMAKE_CXX_FLAGS_RELWITHDEBINFO ${CMAKE_CXX_FLAGS_RELWITHDEBINFO})
     else ()
         find_library(PULSAR_LIBRARY NAMES libpulsar.a)
     endif ()
@@ -172,6 +166,10 @@ if (LINK_STATIC AND NOT MSVC)
         endif()
         target_link_libraries(_pulsar ${PYTHON_WRAPPER_LIBS})
     endif ()
+elseif (LINK_STATIC) # MSVC
+    set_property(TARGET _pulsar PROPERTY
+        MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+    target_link_libraries(_pulsar ${PYTHON_WRAPPER_LIBS})
 else()
     target_link_libraries(_pulsar ${PYTHON_WRAPPER_LIBS})
 endif ()
