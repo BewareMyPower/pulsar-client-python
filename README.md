@@ -45,7 +45,7 @@ Then, build and install the Python wheel.
 
 ```PowerShell
 # Assuming the Pulsar C++ client has been installed under the `PULSAR_CPP` directory.
-cmake -B build -DVCPKG_TRIPLET=x64-windows -DCMAKE_PREFIX_PATH="$env:PULSAR_CPP" -DLINK_STATIC=ON
+cmake -B build -DUSE_VCPKG=ON -DCMAKE_PREFIX_PATH="$env:PULSAR_CPP" -DLINK_STATIC=ON
 cmake --build build --config Release
 cmake --install build
 py setup.py bdist_wheel
