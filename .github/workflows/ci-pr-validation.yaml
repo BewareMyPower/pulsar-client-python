@@ -30,29 +30,43 @@ jobs:
 
   windows-wheel:
     timeout-minutes: 120
-    name: Wheel on ${{ matrix.windows.name }}
+    name: "Python ${{ matrix.python.version }} Wheel on ${{ matrix.windows.name }}"
     runs-on: ${{ matrix.windows.os }}
     env:
       PULSAR_CPP_DIR: 'C:\\pulsar-cpp'
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         windows:
           - name: 'Windows x64'
             os: windows-2022
             arch: '-A x64'
             triplet: 'x64-windows'
+        python:
+          - version: '3.7'
+          - version: '3.8'
+          - version: '3.9'
+          - version: '3.10'
 
     steps:
-      - name: checkout
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
         with:
           submodules: true
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python.version }}
+
+      - name: Prepare vcpkg.json
+        shell: bash
+        run: |
+          python --version
+          cp -f vcpkg-${{ matrix.python.version }}.json vcpkg.json
+          cat vcpkg.json
 
       - name: Download Pulsar C++ client on Windows
         shell: bash
         run: |
-          python --version
           mkdir -p ${{ env.PULSAR_CPP_DIR }}
           cd ${{ env.PULSAR_CPP_DIR }}
           curl -O -L https://github.com/BewareMyPower/pulsar-client-cpp/releases/download/v3.1.0-rc-20221028/${{ matrix.windows.triplet }}-static.zip
@@ -62,8 +76,10 @@ jobs:
       - name: Install dependencies and configure CMake
         shell: bash
         run: |
+          COMMIT_ID=$(grep baseline vcpkg.json | sed 's/[","]//g' | awk '{print $2}')
           cd vcpkg
-          git fetch origin 35312384e7701760ed7855961eff41a63f9cc379 
+          echo "git fetch origin $COMMIT_ID"
+          git fetch origin $COMMIT_ID
           cd -
           cmake -B build ${{ matrix.windows.arch }} \
             -DCMAKE_PREFIX_PATH=${{ env.PULSAR_CPP_DIR }} \
