@@ -17,7 +17,7 @@
 # under the License.
 #
 
-cmake_minimum_required(VERSION 3.18)
+cmake_minimum_required(VERSION 3.15)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake_modules")
 
 option(USE_VCPKG "Use Vcpkg to install dependencies" OFF)
@@ -55,7 +55,7 @@ message(STATUS "PULSAR_INCLUDE: ${PULSAR_INCLUDE}")
 
 SET(CMAKE_CXX_STANDARD 11)
 
-find_package (Python3 REQUIRED COMPONENTS Development.Module)
+find_package (Python3 REQUIRED COMPONENTS Development)
 MESSAGE(STATUS "PYTHON: " ${Python3_VERSION} " - " ${Python3_INCLUDE_DIRS})
 
 find_package(Boost REQUIRED ${Boost_INCLUDE_DIRS})
@@ -67,23 +67,14 @@ set(BOOST_PYTHON_NAME_LIST python3 python310 python39 python38 python37)
 foreach (BOOST_PYTHON_NAME IN LISTS BOOST_PYTHON_NAME_LIST)
     find_package(Boost QUIET COMPONENTS ${BOOST_PYTHON_NAME})
     if (${Boost_FOUND})
-        set(BOOST_PYTHON_NAME_FOUND ${BOOST_PYTHON_NAME})
-        message(STATUS "Found Boost COMPONENTS " ${BOOST_PYTHON_NAME_FOUND})
+        set(BOOST_PYTHON_COMPONENT_FOUND ${BOOST_PYTHON_NAME})
+        message(STATUS "Found Boost COMPONENTS " ${BOOST_PYTHON_COMPONENT_FOUND})
         break ()
     endif ()
 endforeach ()
-if (NOT BOOST_PYTHON_NAME_FOUND)
+if (NOT BOOST_PYTHON_COMPONENT_FOUND)
     message(FATAL_ERROR "Could not find Boost Python library")
 endif ()
-find_package(Boost REQUIRED COMPONENTS ${BOOST_PYTHON_NAME_FOUND})
-set(Boost_PYTHON3_LIBRARIES
-    ${Boost_PYTHON3_LIBRARY}
-    ${Boost_PYTHON310_LIBRARY}
-    ${Boost_PYTHON39_LIBRARY}
-    ${Boost_PYTHON38_LIBRARY}
-    ${Boost_PYTHON37_LIBRARY}
-    )
-MESSAGE(STATUS "Boost Python3: " ${Boost_PYTHON3_LIBRARIES})
 
 ########################################################################################################################
 
@@ -121,10 +112,10 @@ endif()
 # Try all possible boost-python variable namings
 set(PYTHON_WRAPPER_LIBS
     ${PULSAR_LIBRARY}
-    ${Boost_PYTHON3_LIBRARIES})
+    Boost::${BOOST_PYTHON_COMPONENT_FOUND}
+)
 if (MSVC)
-    message(STATUS "Python3_LIBRARIES: " ${Python3_LIBRARIES})
-    set(PYTHON_WRAPPER_LIBS ${PYTHON_WRAPPER_LIBS} ${Python3_LIBRARIES})
+    set(PYTHON_WRAPPER_LIBS ${PYTHON_WRAPPER_LIBS} Python3::Module)
 endif ()
 
 message(STATUS "All libraries: ${PYTHON_WRAPPER_LIBS}")
