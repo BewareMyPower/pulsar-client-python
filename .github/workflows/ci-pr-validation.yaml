@@ -91,7 +91,7 @@ jobs:
         id: cache-vcpkg-installed
         with:
           path: vcpkg/buildtrees/
-          key: ${{ matrix.python.version }}-${{ hashFiles('vcpkg-${{ matrix.python.version  }}.json') }}
+          key: ${{ matrix.python.version }}-${{ hashFiles(format('vcpkg-{0}.json', matrix.python.version)) }}
 
       - name: Build Python wheel
         shell: bash
