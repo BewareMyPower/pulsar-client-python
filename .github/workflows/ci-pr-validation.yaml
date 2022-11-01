@@ -73,6 +73,13 @@ jobs:
           unzip -q ${{ matrix.windows.triplet }}-static.zip
           ls -l ${{ env.PULSAR_CPP_DIR }}
 
+      - name: Dependencies cache
+        uses: actions/cache@v3
+        id: cache-vcpkg-installed
+        with:
+          path: vcpkg/buildtrees/
+          key: ${{ matrix.python.version }}-${{ hashFiles(format('vcpkg-{0}.json', matrix.python.version)) }}
+
       - name: Install dependencies and configure CMake
         shell: bash
         run: |
@@ -85,13 +92,6 @@ jobs:
             -DCMAKE_PREFIX_PATH=${{ env.PULSAR_CPP_DIR }} \
             -DUSE_VCPKG=ON \
             -DLINK_STATIC=ON
-
-      - name: Dependencies cache
-        uses: actions/cache@v3
-        id: cache-vcpkg-installed
-        with:
-          path: vcpkg/buildtrees/
-          key: ${{ matrix.python.version }}-${{ hashFiles(format('vcpkg-{0}.json', matrix.python.version)) }}
 
       - name: Build Python wheel
         shell: bash
