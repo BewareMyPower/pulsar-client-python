@@ -4,9 +4,15 @@
   "description": "Pulsar Python SDK (Python 3.9)",
   "dependencies": [
      {
-       "name": "boost-python",
-       "version>=": "1.76.0"
+       "name": "pybind11",
+       "version>=": "2.10.0#1"
      }
   ],
-  "builtin-baseline": "35312384e7701760ed7855961eff41a63f9cc379"
+  "builtin-baseline": "8a23d2e1240911050d1c105e83f866ed2ffa30b8",
+  "overrides": [
+     {
+       "name": "python3",
+       "version": "3.9.7"
+     }
+  ]
 }

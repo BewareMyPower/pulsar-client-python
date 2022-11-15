@@ -35,18 +35,13 @@ ENV PYTHON_LIBRARIES   /opt/python/${PYTHON_SPEC}/lib/python${PYTHON_VERSION}
 RUN pip3 install pyyaml
 
 ADD .build/dependencies.yaml /
-ADD .build/pulsar-client-cpp-version.txt /
 ADD .build/dep-version.py /usr/local/bin
 
-# Download and compile boost
-RUN BOOST_VERSION=$(dep-version.py boost) && \
-    BOOST_VERSION_UNDESRSCORE=$(echo $BOOST_VERSION | sed 's/\./_/g') && \
-    curl -O -L https://boostorg.jfrog.io/artifactory/main/release/${BOOST_VERSION}/source/boost_${BOOST_VERSION_UNDESRSCORE}.tar.gz && \
-    tar xfz boost_${BOOST_VERSION_UNDESRSCORE}.tar.gz && \
-    cd boost_${BOOST_VERSION_UNDESRSCORE} && \
-    ./bootstrap.sh --with-libraries=python && \
-    ./b2 -d0  address-model=64 cxxflags=-fPIC link=shared threading=multi variant=release install && \
-    rm -rf /boost_${BOOST_VERSION_UNDESRSCORE}.tar.gz /boost_${BOOST_VERSION_UNDESRSCORE}
+RUN PYBIND11_VERSION=$(dep-version.py pybind11) && \
+    curl -O -L https://github.com/pybind/pybind11/archive/refs/tags/v${PYBIND11_VERSION}.tar.gz && \
+    tar zxf v${PYBIND11_VERSION}.tar.gz && \
+    cp -r pybind11-${PYBIND11_VERSION}/include/pybind11 /usr/include/ && \
+    rm -rf pybind11-${PYBIND11_VERSION} v${PYBIND11_VERSION}.tar.gz
 
 RUN CMAKE_VERSION=$(dep-version.py cmake) && \
     curl -O -L https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-linux-${ARCH}.tar.gz && \
@@ -114,7 +109,7 @@ RUN CURL_VERSION=$(dep-version.py curl) && \
     rm -rf /curl-${CURL_VERSION}.tar.gz /curl-${CURL_VERSION}
 
 # Pulsar client C++
-RUN PULSAR_CPP_VERSION=$(cat pulsar-client-cpp-version.txt | xargs) && \
+RUN PULSAR_CPP_VERSION=$(dep-version.py pulsar-cpp) && \
     curl -O -L https://archive.apache.org/dist/pulsar/pulsar-client-cpp-${PULSAR_CPP_VERSION}/apache-pulsar-client-cpp-${PULSAR_CPP_VERSION}.tar.gz && \
     tar xfz apache-pulsar-client-cpp-${PULSAR_CPP_VERSION}.tar.gz && \
     cd apache-pulsar-client-cpp-${PULSAR_CPP_VERSION} && \

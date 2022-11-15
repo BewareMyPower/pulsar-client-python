@@ -31,9 +31,9 @@ source pkg/mac/common.sh
 pip3 install pyyaml
 
 dep=$ROOT_DIR/build-support/dep-version.py
+PYBIND11_VERSION=$($dep pybind11)
 ZLIB_VERSION=$($dep zlib)
 OPENSSL_VERSION=$($dep openssl)
-BOOST_VERSION=$($dep boost)
 PROTOBUF_VERSION=$($dep protobuf)
 ZSTD_VERSION=$($dep zstd)
 SNAPPY_VERSION=$($dep snappy)
@@ -46,6 +46,11 @@ cd $CACHE_DIR
 
 PREFIX=$CACHE_DIR/install
 
+###############################################################################
+curl -L -O https://github.com/pybind/pybind11/archive/refs/tags/v${PYBIND11_VERSION}.tar.gz
+tar zxf v${PYBIND11_VERSION}.tar.gz
+cp -rf pybind11-${PYBIND11_VERSION}/include/pybind11 $PREFIX/
+rm -rf pybind11-${PYBIND11_VERSION} v${PYBIND11_VERSION}.tar.gz
 
 ###############################################################################
 if [ ! -f zlib-${ZLIB_VERSION}/.done ]; then
@@ -125,44 +130,6 @@ if [ ! -f openssl-OpenSSL_${OPENSSL_VERSION_UNDERSCORE}.done ]; then
 else
     echo "Using cached OpenSSL"
 fi
-
-###############################################################################
-BOOST_VERSION_=${BOOST_VERSION//./_}
-DIR=boost-src-${BOOST_VERSION}
-if [ ! -f $DIR/.done ]; then
-    echo "Building Boost for Py $PYTHON_VERSION"
-    curl -O -L https://boostorg.jfrog.io/artifactory/main/release/${BOOST_VERSION}/source/boost_${BOOST_VERSION_}.tar.gz
-    tar xfz boost_${BOOST_VERSION_}.tar.gz
-    mv boost_${BOOST_VERSION_} $DIR
-
-    PY_INCLUDE_DIR=${PREFIX}/include/python${PYTHON_VERSION}
-    if [ $PYTHON_VERSION = '3.7' ]; then
-        PY_INCLUDE_DIR=${PY_INCLUDE_DIR}m
-    fi
-
-    pushd $DIR
-      cat <<EOF > user-config.jam
-        using python : $PYTHON_VERSION
-                : python3
-                : ${PY_INCLUDE_DIR}
-                : ${PREFIX}/lib
-              ;
-EOF
-      ./bootstrap.sh --with-libraries=python --with-python=python3 --with-python-root=$PREFIX \
-            --prefix=${PREFIX}
-      ./b2 -d0 address-model=64 cxxflags="-fPIC -arch arm64 -arch x86_64 -mmacosx-version-min=${MACOSX_DEPLOYMENT_TARGET}" \
-                link=static threading=multi \
-                --user-config=./user-config.jam \
-                variant=release python=${PYTHON_VERSION} \
-                -j16 \
-                install
-      touch .done
-    popd
-else
-    echo "Using cached Boost for Py $PYTHON_VERSION"
-fi
-
-
 
 ###############################################################################
 if [ ! -f protobuf-${PROTOBUF_VERSION}/.done ]; then

@@ -141,3 +141,69 @@ jobs:
           name: wheel-mac-py${{matrix.py.version}}
           path: dist/*.whl
 
+  windows-wheels:
+    name: Wheel Windows - Py ${{matrix.py.version}}
+    runs-on: windows-2019
+    timeout-minutes: 300
+
+    strategy:
+      fail-fast: false
+      matrix:
+        python:
+          - {version: '3.7'}
+          - {version: '3.8'}
+          - {version: '3.9'}
+          - {version: '3.10'}
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: true
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python.version }}
+
+      - name: Prepare vcpkg.json
+        shell: bash
+        run: |
+          python --version
+          cp -f vcpkg-${{ matrix.python.version }}.json vcpkg.json
+          cat vcpkg.json
+
+      - name: Download Pulsar C++ client on Windows
+        shell: bash
+          mkdir -p ${{ env.PULSAR_CPP_DIR }}
+          cd ${{ env.PULSAR_CPP_DIR }}
+          curl -O -L https://github.com/BewareMyPower/pulsar-client-cpp/releases/download/v3.1.0-rc-20221028/${{ matrix.windows.triplet }}-static.zip
+          unzip -q ${{ matrix.windows.triplet }}-static.zip
+          ls -l ${{ env.PULSAR_CPP_DIR }}
+
+      - name: Dependencies cache
+        uses: actions/cache@v3
+        id: cache-vcpkg-installed
+        with:
+          path: vcpkg/buildtrees/
+          key: ${{ matrix.python.version }}-${{ hashFiles(format('vcpkg-{0}.json', matrix.python.version)) }}
+
+      - name: Install dependencies and configure CMake
+        shell: bash
+        run: |
+          COMMIT_ID=$(grep baseline vcpkg.json | sed 's/[","]//g' | awk '{print $2}')
+          cd vcpkg
+          echo "git fetch origin $COMMIT_ID"
+          git fetch origin $COMMIT_ID
+          cd -
+          cmake -B build -A x64 \
+            -DCMAKE_PREFIX_PATH=${{ env.PULSAR_CPP_DIR }} \
+            -DUSE_VCPKG=ON \
+            -DLINK_STATIC=ON
+
+      - name: Build Python wheel
+        shell: bash
+        run: |
+          cmake --build build --config Release --target install
+          python -m pip install wheel
+          python setup.py bdist_wheel
+          python -m pip install ./dist/*.whl
+          python -c 'import pulsar; c = pulsar.Client("pulsar://localhost:6650"); c.close()'

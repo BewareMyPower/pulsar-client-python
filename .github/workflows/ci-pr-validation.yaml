@@ -55,11 +55,8 @@ jobs:
       - name: checkout
         uses: actions/checkout@v3
 
-      - name: Install deps
-        run: sudo apt-get install -y libboost-python-dev
-
       - name: Install Pulsar C++ client
-        run: build-support/install-cpp-client.sh
+        run: build-support/install-dependencies.sh
 
       - name: CMake
         run: cmake .

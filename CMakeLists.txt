@@ -58,43 +58,15 @@ SET(CMAKE_CXX_STANDARD 11)
 find_package (Python3 REQUIRED COMPONENTS Development.Module)
 MESSAGE(STATUS "PYTHON: " ${Python3_VERSION} " - " ${Python3_INCLUDE_DIRS})
 
-find_package(Boost REQUIRED ${Boost_INCLUDE_DIRS})
-message(STATUS "Boost_INCLUDE_DIRS: ${Boost_INCLUDE_DIRS}")
-
-SET(Boost_USE_STATIC_LIBS   ${LINK_STATIC})
-
-set(BOOST_PYTHON_NAME_LIST python3 python310 python39 python38 python37)
-foreach (BOOST_PYTHON_NAME IN LISTS BOOST_PYTHON_NAME_LIST)
-    find_package(Boost QUIET COMPONENTS ${BOOST_PYTHON_NAME})
-    if (${Boost_FOUND})
-        set(BOOST_PYTHON_COMPONENT_FOUND ${BOOST_PYTHON_NAME})
-        message(STATUS "Found Boost COMPONENTS " ${BOOST_PYTHON_COMPONENT_FOUND})
-        break ()
-    endif ()
-endforeach ()
-if (NOT BOOST_PYTHON_COMPONENT_FOUND)
-    message(FATAL_ERROR "Could not find Boost Python library")
-endif ()
+find_path(PYBIND11_INCLUDE_DIRS NAMES "pybind11/pybind11.h")
+message(STATUS "PYBIND11_INCLUDE_DIRS: " ${PYBIND11_INCLUDE_DIRS})
 
 ########################################################################################################################
 
-INCLUDE_DIRECTORIES(${PULSAR_INCLUDE} "${Boost_INCLUDE_DIRS}" "${Python3_INCLUDE_DIRS}")
+INCLUDE_DIRECTORIES(${PULSAR_INCLUDE} ${PYBIND11_INCLUDE_DIRS} ${Python3_INCLUDE_DIRS})
 
-ADD_LIBRARY(_pulsar SHARED src/pulsar.cc
-                           src/producer.cc
-                           src/consumer.cc
-                           src/config.cc
-                           src/enums.cc
-                           src/client.cc
-                           src/message.cc
-                           src/authentication.cc
-                           src/reader.cc
-                           src/schema.cc
-                           src/cryptoKeyReader.cc
-                           src/exceptions.cc
-                           src/utils.cc
-        )
-
+file(GLOB SOURCES src/*.cc)
+ADD_LIBRARY(_pulsar SHARED ${SOURCES})
 if (MSVC)
     set(CMAKE_SHARED_LIBRARY_SUFFIX .pyd)
 else ()
@@ -109,10 +81,8 @@ if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
   set(CMAKE_SHARED_LIBRARY_CREATE_CXX_FLAGS "${CMAKE_SHARED_LIBRARY_CREATE_CXX_FLAGS} -Qunused-arguments -undefined dynamic_lookup")
 endif()
 
-# Try all possible boost-python variable namings
 set(PYTHON_WRAPPER_LIBS
     ${PULSAR_LIBRARY}
-    Boost::${BOOST_PYTHON_COMPONENT_FOUND}
 )
 if (MSVC)
     set(PYTHON_WRAPPER_LIBS ${PYTHON_WRAPPER_LIBS} Python3::Module)
