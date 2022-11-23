@@ -219,6 +219,9 @@ jobs:
           curl -L -O https://github.com/pybind/pybind11/archive/refs/tags/v${PYBIND11_VERSION}.tar.gz
           tar zxf v${PYBIND11_VERSION}.tar.gz
           mv pybind11-${PYBIND11_VERSION} pybind11
+          set -x
+          ls -1 pybind11
+          ls -1 pybind11/include
           cmake -B build ${{ matrix.windows.arch }} \
             -DCMAKE_PREFIX_PATH=${{ env.PULSAR_CPP_DIR }} \
             -DLINK_STATIC=ON

@@ -21,7 +21,8 @@ cmake_minimum_required(VERSION 3.18)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake_modules")
 
 project (pulsar-client-python)
-set(CMAKE_PREFIX_PATH ${PROJECT_SOURCE_DIR}/pybind11/include ${CMAKE_PREFIX_PATH})
+set(CMAKE_PREFIX_PATH ${PROJECT_SOURCE_DIR}/pybind11 ${CMAKE_PREFIX_PATH})
+message(STATUS "CMAKE_PREFIX_PATH: " ${CMAKE_PREFIX_PATH})
 option(LINK_STATIC "Link against static libraries" OFF)
 MESSAGE(STATUS "LINK_STATIC:  " ${LINK_STATIC})
 
