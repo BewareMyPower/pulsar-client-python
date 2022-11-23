@@ -69,7 +69,7 @@ jobs:
           mkdir -p ${{ env.PULSAR_CPP_DIR }}
           cd ${{ env.PULSAR_CPP_DIR }}
           curl -O -L https://github.com/BewareMyPower/pulsar-client-cpp/releases/download/v3.1.0-rc-20221028/x64-windows-static.zip
-          unzip -q ${{ matrix.windows.triplet }}-static.zip
+          unzip -q x64-windows-static.zip
           ls -l ${{ env.PULSAR_CPP_DIR }}
 
       - name: Dependencies cache
