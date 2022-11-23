@@ -27,154 +27,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  check-and-lint:
-    name: Lint and check code
-    runs-on: ubuntu-20.04
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
-        with:
-          python-version: 3.x
-      - name: Install deps
-        run: pip install -U pydoctor
-      - name: Check docs syntax
-        run: |
-          pydoctor --make-html \
-            --html-viewsource-base=https://github.com/apache/pulsar-client-python/tree/main \
-            --docformat=numpy --theme=readthedocs \
-            --intersphinx=https://docs.python.org/3/objects.inv \
-            --html-output=apidocs \
-            pulsar
-
-  unit-tests:
-    name: Run unit tests
-    runs-on: ubuntu-22.04
-    timeout-minutes: 120
-
-    steps:
-      - name: checkout
-        uses: actions/checkout@v3
-
-      - name: Install Pulsar C++ client
-        run: build-support/install-dependencies.sh
-
-      - name: CMake
-        run: cmake .
-
-      - name: Build
-        run: make -j8
-
-      - name: Python install
-        run: |
-            ./setup.py bdist_wheel
-            WHEEL=$(find dist -name '*.whl')
-            pip3 install ${WHEEL}[avro]
-
-      - name: Start Pulsar service
-        run: ./build-support/pulsar-test-service-start.sh
-
-      - name: Run unit tests
-        run: ./tests/run-unit-tests.sh
-
-      - name: Stop Pulsar service
-        run: ./build-support/pulsar-test-service-stop.sh
-
-
-  linux-wheel:
-    name: Wheel ${{matrix.image.name}} - Py ${{matrix.python.version}} - ${{matrix.cpu.platform}}
-    needs: unit-tests
-    runs-on: ubuntu-22.04
-    timeout-minutes: 300
-
-    strategy:
-      fail-fast: false
-      matrix:
-        image:
-          - {name: 'manylinux2014', py_suffix: ''}
-          - {name: 'manylinux_musl', py_suffix: '-alpine'}
-        python:
-          - {version: '3.10', spec: 'cp310-cp310'}
-        cpu:
-          - {arch: 'x86_64', platform: 'x86_64'}
-
-    steps:
-      - name: checkout
-        uses: actions/checkout@v3
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v2
-
-      - uses: docker/setup-buildx-action@v2
-      - run: build-support/copy-deps-versionfile.sh
-
-      - name: Build Manylinux Docker image
-        uses: docker/build-push-action@v3
-        with:
-          context: ./pkg/${{matrix.image.name}}
-          load: true
-          tags: build:latest
-          platforms: linux/${{matrix.cpu.arch}}
-          build-args: |
-            PLATFORM=${{matrix.cpu.platform}}
-            ARCH=${{matrix.cpu.arch}}
-            PYTHON_VERSION=${{matrix.python.version}}
-            PYTHON_SPEC=${{matrix.python.spec}}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Build wheel file
-        run: |
-          docker run -i -v $PWD:/pulsar-client-python build:latest \
-              /pulsar-client-python/pkg/build-wheel-inside-docker.sh
-
-      - name: Test wheel file
-        run: |
-          docker run -i -v $PWD:/pulsar-client-python python:${{matrix.python.version}}${{matrix.image.py_suffix}} \
-              /pulsar-client-python/pkg/test-wheel.sh
-
-  mac-wheels:
-    name: Wheel MacOS Universal2 - Py ${{matrix.py.version}}
-    needs: unit-tests
-    runs-on: macos-12
-    timeout-minutes: 300
-
-    strategy:
-      matrix:
-        py:
-          - {version: '3.10', version_long:  '3.10.7'}
-
-    steps:
-      - name: checkout
-        uses: actions/checkout@v3
-
-      - name: Dependencies cache
-        uses: actions/cache@v3
-        id: cache-deps
-        with:
-          path: .pulsar-mac-build/deps/install
-          key: ${{matrix.py.version_long}}-${{ hashFiles('dependencies.yaml') }}-${{ hashFiles('pkg/mac/*') }}
-
-      - name: Build dependencies
-        if: steps.cache-deps.outputs.cache-hit != 'true'
-        run: pkg/mac/build-dependencies.sh ${{matrix.py.version}} ${{matrix.py.version_long}}
-
-      - name: Pulsar C++ cache
-        uses: actions/cache@v3
-        id: cache-cpp
-        with:
-          path: .pulsar-mac-build/cpp/install
-          key: ${{ hashFiles('dependencies.yaml') }}-${{ hashFiles('pulsar-client-cpp-version.txt') }}-${{ hashFiles('pkg/mac/*') }}
-
-      - name: Build Pulsar C++ client
-        if: steps.cache-cpp.outputs.cache-hit != 'true'
-        run: pkg/mac/build-pulsar-cpp.sh
-
-      - name: Build and test Mac wheels
-        run: pkg/mac/build-mac-wheels.sh ${{matrix.py.version}}
-
   windows-wheels:
     name: "Python ${{ matrix.python.version }} Wheel on ${{ matrix.windows.name }}"
-    needs: unit-tests
     runs-on: ${{ matrix.windows.os }}
     timeout-minutes: 120
 
@@ -189,10 +43,7 @@ jobs:
             arch: '-A x64'
             triplet: 'x64-windows'
         python:
-          - version: '3.7'
-          - version: '3.8'
           - version: '3.9'
-          - version: '3.10'
 
     steps:
       - uses: actions/checkout@v3
@@ -240,20 +91,12 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ always() }}
     needs: [
-      check-and-lint,
-      unit-tests,
-      linux-wheel,
-      mac-wheels,
       windows-wheels
     ]
     steps:
       - run: |
           if [[ ! ( \
-                    "${{ needs.check-and-lint.result }}" == "success" \
-                  && "${{ needs.unit-tests.result }}" == "success" \
-                  && "${{ needs.linux-wheel.result }}" == "success" \
-                  && "${{ needs.mac-wheels.result }}" == "success" \
-                  && "${{ needs.windows-wheels.result }}" == "success" \
+                  "${{ needs.windows-wheels.result }}" == "success" \
                 ) ]]; then
               echo "Required jobs haven't been completed successfully."
               exit 1
