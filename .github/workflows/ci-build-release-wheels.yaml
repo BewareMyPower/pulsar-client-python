@@ -63,6 +63,7 @@ jobs:
 
       - name: Download Pulsar C++ client on Windows
         shell: bash
+        run: |
           mkdir -p ${{ env.PULSAR_CPP_DIR }}
           cd ${{ env.PULSAR_CPP_DIR }}
           curl -O -L https://github.com/BewareMyPower/pulsar-client-cpp/releases/download/v3.1.0-rc-20221028/${{ matrix.windows.triplet }}-static.zip
