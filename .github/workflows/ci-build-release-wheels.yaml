@@ -48,7 +48,7 @@ jobs:
           - {version: '3.11', spec: 'cp311-cp311'}
         cpu:
           - {arch: 'x86_64', platform: 'x86_64'}
-          - {arch: 'aarch64', platform: 'arm64'}
+          #- {arch: 'aarch64', platform: 'arm64'}
 
     steps:
       - name: checkout
