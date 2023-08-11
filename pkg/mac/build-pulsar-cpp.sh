@@ -58,6 +58,6 @@ if [ ! -f apache-pulsar-client-cpp-${PULSAR_CPP_VERSION}/.done ]; then
               -DBUILD_STATIC_LIB=ON \
               -DPROTOC_PATH=${DEPS_PREFIX}/bin/protoc
 
-      make -j16 install
+      make VERBOSE=1 -j16 install
   popd
 fi

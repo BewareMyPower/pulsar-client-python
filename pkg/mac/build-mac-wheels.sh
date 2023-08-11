@@ -62,7 +62,7 @@ cmake . \
         -DPython3_ROOT_DIR=$PREFIX
 
 make clean
-make -j16
+make VERBOSE=1 -j16
 
 $PY_EXE setup.py bdist_wheel
 
