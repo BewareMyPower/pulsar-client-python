@@ -69,6 +69,13 @@ jobs:
       - name: Build and test Mac wheels
         run: pkg/mac/build-mac-wheels.sh ${{matrix.py.version}}
 
+      - uses: actions/upload-artifact@master
+        name: Upload the wheel
+        if: failure()
+        with:
+          name: python-wheel
+          path: dist/*.whl
+
   check-completion:
     name: Check Completion
     runs-on: ubuntu-latest
