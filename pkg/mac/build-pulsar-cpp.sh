@@ -45,6 +45,7 @@ if [ ! -f apache-pulsar-client-cpp-${PULSAR_CPP_VERSION}/.done ]; then
       ARCHS='arm64;x86_64'
 
       cmake . \
+              -DCMAKE_CXX_STANDARD=11 \
               -DCMAKE_OSX_ARCHITECTURES=${ARCHS} \
               -DCMAKE_OSX_DEPLOYMENT_TARGET=${MACOSX_DEPLOYMENT_TARGET} \
               -DCMAKE_INSTALL_PREFIX=$PREFIX \
