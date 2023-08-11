@@ -50,7 +50,7 @@ if [ ! -f apache-pulsar-client-cpp-${PULSAR_CPP_VERSION}/.done ]; then
               -DCMAKE_INSTALL_PREFIX=$PREFIX \
               -DCMAKE_BUILD_TYPE=Release \
               -DCMAKE_PREFIX_PATH=${DEPS_PREFIX} \
-              -DCMAKE_CXX_FLAGS=-I${DEPS_PREFIX}/include \
+              -DOPENSSL_ROOT_DIR=${DEPS_PREFIX} \
               -DLINK_STATIC=OFF \
               -DBUILD_TESTS=OFF \
               -DBUILD_WIRESHARK=OFF \
