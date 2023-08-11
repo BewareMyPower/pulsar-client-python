@@ -76,6 +76,20 @@ jobs:
           name: python-wheel
           path: dist/*.whl
 
+      - uses: actions/upload-artifact@master
+        name: Upload the dependency binaries
+        if: failure()
+        with:
+          name: dependencies
+          path: .pulsar-mac-build/deps/install
+
+      - uses: actions/upload-artifact@master
+        name: Upload the cpp binaries
+        if: failure()
+        with:
+          name: cpp-binaries
+          path: .pulsar-mac-build/cpp/install
+
   check-completion:
     name: Check Completion
     runs-on: ubuntu-latest
