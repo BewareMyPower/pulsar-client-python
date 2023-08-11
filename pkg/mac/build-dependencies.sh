@@ -196,7 +196,7 @@ if [ ! -f curl-${CURL_VERSION}/.done ]; then
     CURL_VERSION_=${CURL_VERSION//./_}
     download_dependency $ROOT_DIR/dependencies.yaml curl
     pushd curl-${CURL_VERSION}
-      CFLAGS="-fPIC -arch arm64 -arch x86_64 -mmacosx-version-min=${MACOSX_DEPLOYMENT_TARGET}" \
+      CFLAGS="-I$PREFIX/include -fPIC -arch arm64 -arch x86_64 -mmacosx-version-min=${MACOSX_DEPLOYMENT_TARGET}" \
             ./configure --with-ssl=$PREFIX \
               --without-nghttp2 \
               --without-libidn2 \
