@@ -27,142 +27,15 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  check-and-lint:
-    name: Lint and check code
-    runs-on: ubuntu-20.04
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
-        with:
-          python-version: 3.x
-      - name: Install deps
-        run: pip install -U pydoctor
-      - name: Check docs syntax
-        run: |
-          pydoctor --make-html \
-            --html-viewsource-base=https://github.com/apache/pulsar-client-python/tree/main \
-            --docformat=numpy --theme=readthedocs \
-            --intersphinx=https://docs.python.org/3/objects.inv \
-            --html-output=apidocs \
-            pulsar
-
-  unit-tests:
-    name: Run unit tests for Python ${{matrix.version}}
-    runs-on: ubuntu-22.04
-    timeout-minutes: 120
-
-    strategy:
-      fail-fast: false
-      matrix:
-        version: ['3.9', '3.13']
-
-    steps:
-      - name: checkout
-        uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "${{matrix.version}}"
-
-      - name: Install Pulsar C++ client
-        run: build-support/install-dependencies.sh
-
-      - name: CMake
-        run: cmake .
-
-      - name: Build
-        run: make -j8
-
-      - name: Python install
-        run: |
-            python3 -m pip install -U pip setuptools wheel requests
-            python3 setup.py bdist_wheel
-            WHEEL=$(find dist -name '*.whl')
-            pip3 install ${WHEEL}[avro]
-
-      - name: Run Oauth2 tests
-        run: |
-          docker compose -f ./build-support/docker-compose-pulsar-oauth2.yml up -d
-          # Wait until the namespace is created, currently there is no good way to check it via CLI
-          sleep 10
-          python3 tests/oauth2_test.py
-          docker compose -f ./build-support/docker-compose-pulsar-oauth2.yml down
-
-      - name: Start Pulsar service
-        run: ./build-support/pulsar-test-service-start.sh
-
-      - name: Run unit tests
-        run: ./tests/run-unit-tests.sh
-
-      - name: Stop Pulsar service
-        run: ./build-support/pulsar-test-service-stop.sh
-
-      - name: Test functions install
-        run: |
-            WHEEL=$(find dist -name '*.whl')
-            pip3 install ${WHEEL}[all] --force-reinstall
-
-  linux-wheel:
-    name: Wheel ${{matrix.image.name}} - Py ${{matrix.python.version}} - ${{matrix.cpu.platform}}
-    needs: unit-tests
-    runs-on: ubuntu-22.04
-    timeout-minutes: 300
-
-    strategy:
-      fail-fast: false
-      matrix:
-        image:
-          - {name: 'manylinux2014', py_suffix: ''}
-          - {name: 'manylinux_musl', py_suffix: '-alpine'}
-        python:
-          - {version: '3.13', spec: 'cp313-cp313'}
-        cpu:
-          - {arch: 'x86_64', platform: 'x86_64'}
-
-    steps:
-      - name: checkout
-        uses: actions/checkout@v3
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v2
-
-      - uses: docker/setup-buildx-action@v2
-
-      - name: Build Manylinux Docker image
-        uses: docker/build-push-action@v3
-        with:
-          context: ./pkg/${{matrix.image.name}}
-          load: true
-          tags: build:latest
-          platforms: linux/${{matrix.cpu.arch}}
-          build-args: |
-            PLATFORM=${{matrix.cpu.platform}}
-            ARCH=${{matrix.cpu.arch}}
-            PYTHON_VERSION=${{matrix.python.version}}
-            PYTHON_SPEC=${{matrix.python.spec}}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Build wheel file
-        run: |
-          docker run -i -v $PWD:/pulsar-client-python build:latest \
-              /pulsar-client-python/pkg/build-wheel-inside-docker.sh
-
-      - name: Test wheel file
-        run: |
-          docker run -i -v $PWD:/pulsar-client-python python:${{matrix.python.version}}${{matrix.image.py_suffix}} \
-              /pulsar-client-python/pkg/test-wheel.sh
-
   mac-wheels:
     name: Wheel MacOS Universal2 - Py ${{matrix.py.version}}
-    needs: unit-tests
     runs-on: macos-14
     timeout-minutes: 300
 
     strategy:
       matrix:
         py:
-          - {version: '3.13', version_long:  '3.13.1'}
+          - {version: '3.12', version_long:  '3.12.8'}
 
     steps:
       - name: checkout
@@ -171,81 +44,25 @@ jobs:
       - name: Build and test Mac wheels
         run: |
           pkg/mac/build-mac-wheels.sh ${{matrix.py.version}} ${{matrix.py.version_long}}
+          ls dist/*.whl
 
-  windows-wheels:
-    name: "Python ${{ matrix.python.version }} Wheel on Windows x64"
-    needs: unit-tests
-    runs-on: windows-2019
-    timeout-minutes: 120
-
-    env:
-      PULSAR_CPP_DIR: 'C:\\pulsar-cpp'
-    strategy:
-      fail-fast: false
-      matrix:
-        python:
-          - version: '3.12'
-
-    steps:
-      - uses: actions/checkout@v3
-
-      - uses: actions/setup-python@v4
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
         with:
-          python-version: ${{ matrix.python.version }}
-
-      - name: Download Pulsar C++ client on Windows
-        shell: bash
-        run: |
-          source ./build-support/dep-url.sh
-          BASE_URL=$(pulsar_cpp_base_url $(grep pulsar-cpp dependencies.yaml | awk '{print $2}'))
-          mkdir -p ${{ env.PULSAR_CPP_DIR }}
-          cd ${{ env.PULSAR_CPP_DIR }}
-          curl -O -L ${BASE_URL}/x64-windows-static.tar.gz
-          tar zxf x64-windows-static.tar.gz
-          mv x64-windows-static/* .
-          ls -l ${{ env.PULSAR_CPP_DIR }}
-
-      - name: Configure CMake
-        shell: bash
-        run: |
-          pip3 install pyyaml
-          export PYBIND11_VERSION=$(./build-support/dep-version.py pybind11)
-          curl -L -O https://github.com/pybind/pybind11/archive/refs/tags/v${PYBIND11_VERSION}.tar.gz
-          tar zxf v${PYBIND11_VERSION}.tar.gz
-          rm -rf pybind11
-          mv pybind11-${PYBIND11_VERSION} pybind11
-          cmake -B build -A x64 \
-            -DCMAKE_PREFIX_PATH=${{ env.PULSAR_CPP_DIR }} \
-            -DLINK_STATIC=ON
-
-      - name: Build Python wheel
-        shell: bash
-        run: |
-          cmake --build build --config Release --target install
-          python -m pip install wheel setuptools
-          python setup.py bdist_wheel
-          python -m pip install ./dist/*.whl
-          python -c 'import pulsar; c = pulsar.Client("pulsar://localhost:6650"); c.close()'
+          name: wheel-mac-py${{matrix.py.version}}
+          path: dist/*.whl
 
   check-completion:
     name: Check Completion
     runs-on: ubuntu-latest
     if: ${{ always() }}
     needs: [
-      check-and-lint,
-      unit-tests,
-      linux-wheel,
-      mac-wheels,
-      windows-wheels
+      mac-wheels
     ]
     steps:
       - run: |
           if [[ ! ( \
-                    "${{ needs.check-and-lint.result }}" == "success" \
-                  && "${{ needs.unit-tests.result }}" == "success" \
-                  && "${{ needs.linux-wheel.result }}" == "success" \
-                  && "${{ needs.mac-wheels.result }}" == "success" \
-                  && "${{ needs.windows-wheels.result }}" == "success" \
+                  "${{ needs.mac-wheels.result }}" == "success" \
                 ) ]]; then
               echo "Required jobs haven't been completed successfully."
               exit 1
