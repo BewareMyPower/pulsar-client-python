@@ -47,7 +47,7 @@ jobs:
           ls dist/*.whl
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: wheel-mac-py${{matrix.py.version}}
           path: dist/*.whl
