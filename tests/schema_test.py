@@ -18,7 +18,10 @@
 # under the License.
 #
 
+import base64
 import math
+import os
+import sys
 import requests
 from typing import List
 from unittest import TestCase, main
@@ -29,6 +32,10 @@ from pulsar.schema import *
 from enum import Enum
 import json
 from fastavro.schema import load_schema
+
+# Make generated protobuf test classes importable
+sys.path.insert(0, os.path.dirname(__file__))
+from test_schema_pb2 import TestMessage, TestMessageWithNested, TestInner
 
 class ExampleRecord(Record):
     str_field = String()
@@ -1402,6 +1409,91 @@ class SchemaTest(TestCase):
             consumer.acknowledge(msg)
 
         client.close()
+
+
+class ProtobufNativeSchemaTest(TestCase):
+    """Unit tests for ProtobufNativeSchema (no Pulsar broker required)."""
+
+    def test_schema_type(self):
+        """Schema type must be PROTOBUF_NATIVE."""
+        import _pulsar
+        schema = ProtobufNativeSchema(TestMessage)
+        self.assertEqual(schema.schema_info().schema_type(), _pulsar.SchemaType.PROTOBUF_NATIVE)
+
+    def test_schema_definition_keys(self):
+        """Schema definition JSON must contain the three required keys."""
+        schema = ProtobufNativeSchema(TestMessage)
+        schema_def = json.loads(schema.schema_info().schema())
+        self.assertIn('fileDescriptorSet', schema_def)
+        self.assertIn('rootMessageTypeName', schema_def)
+        self.assertIn('rootFileDescriptorName', schema_def)
+
+    def test_schema_definition_values(self):
+        """rootMessageTypeName and rootFileDescriptorName must match the descriptor."""
+        schema = ProtobufNativeSchema(TestMessage)
+        schema_def = json.loads(schema.schema_info().schema())
+        self.assertEqual(schema_def['rootMessageTypeName'], 'test.TestMessage')
+        self.assertEqual(schema_def['rootFileDescriptorName'], 'test_schema.proto')
+
+    def test_file_descriptor_set_is_valid_base64_proto(self):
+        """fileDescriptorSet must be valid base64-encoded FileDescriptorSet bytes."""
+        from google.protobuf import descriptor_pb2
+        schema = ProtobufNativeSchema(TestMessage)
+        schema_def = json.loads(schema.schema_info().schema())
+        raw = base64.b64decode(schema_def['fileDescriptorSet'])
+        fds = descriptor_pb2.FileDescriptorSet.FromString(raw)
+        file_names = [f.name for f in fds.file]
+        self.assertIn('test_schema.proto', file_names)
+
+    def test_encode_decode_roundtrip(self):
+        """encode then decode must reproduce the original message."""
+        schema = ProtobufNativeSchema(TestMessage)
+        original = TestMessage(name='hello', value=42)
+        encoded = schema.encode(original)
+        decoded = schema.decode(encoded)
+        self.assertEqual(decoded.name, 'hello')
+        self.assertEqual(decoded.value, 42)
+
+    def test_encode_produces_protobuf_binary(self):
+        """Encoded bytes must be valid protobuf binary (parseable by the class directly)."""
+        schema = ProtobufNativeSchema(TestMessage)
+        msg = TestMessage(name='pulsar', value=100)
+        encoded = schema.encode(msg)
+        # Verify with protobuf's own parser
+        reparsed = TestMessage.FromString(encoded)
+        self.assertEqual(reparsed, msg)
+
+    def test_encode_decode_nested_message(self):
+        """encode/decode round-trip works for messages containing nested message fields."""
+        schema = ProtobufNativeSchema(TestMessageWithNested)
+        original = TestMessageWithNested(
+            str_field='test',
+            int_field=7,
+            double_field=3.14,
+            nested=TestInner(inner_str='inner', inner_int=999),
+        )
+        decoded = schema.decode(schema.encode(original))
+        self.assertEqual(decoded.str_field, 'test')
+        self.assertEqual(decoded.int_field, 7)
+        self.assertAlmostEqual(decoded.double_field, 3.14)
+        self.assertEqual(decoded.nested.inner_str, 'inner')
+        self.assertEqual(decoded.nested.inner_int, 999)
+
+    def test_wrong_type_raises(self):
+        """Encoding an object of the wrong type must raise TypeError."""
+        schema = ProtobufNativeSchema(TestMessage)
+        with self.assertRaises(TypeError):
+            schema.encode("not a protobuf message")
+
+    def test_non_message_class_raises(self):
+        """Constructing with a non-Message class must raise TypeError."""
+        with self.assertRaises(TypeError):
+            ProtobufNativeSchema(str)
+
+    def test_schema_name(self):
+        """Schema name must be 'PROTOBUF_NATIVE'."""
+        schema = ProtobufNativeSchema(TestMessage)
+        self.assertEqual(schema.schema_info().name(), 'PROTOBUF_NATIVE')
 
 
 if __name__ == '__main__':
