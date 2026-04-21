@@ -115,7 +115,8 @@ void export_enums(py::module_& m) {
         .value("AVRO", pulsar::AVRO)
         .value("AUTO_CONSUME", pulsar::AUTO_CONSUME)
         .value("AUTO_PUBLISH", pulsar::AUTO_PUBLISH)
-        .value("KEY_VALUE", pulsar::KEY_VALUE);
+        .value("KEY_VALUE", pulsar::KEY_VALUE)
+        .value("PROTOBUF_NATIVE", pulsar::PROTOBUF_NATIVE);
 
     enum_<InitialPosition>(m, "InitialPosition", "Supported initial position")
         .value("Latest", InitialPositionLatest)
