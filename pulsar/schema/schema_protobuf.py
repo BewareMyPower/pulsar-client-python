@@ -90,11 +90,24 @@ if HAS_PROTOBUF:
             from my_proto_pb2 import MyMessage
 
             client = pulsar.Client('pulsar://localhost:6650')
-            producer = client.create_producer(
-                'my-topic',
-                schema=ProtobufNativeSchema(MyMessage)
-            )
-            producer.send(MyMessage(field='value'))
+            schema = ProtobufNativeSchema(MyMessage)
+            producer = client.create_producer('my-topic', schema=schema)
+            consumer = client.subscribe('my-topic', 'my-sub', schema=schema)
+
+            message = MyMessage()
+            message.field = 'value'
+            producer.send(message)
+
+            received = consumer.receive(timeout_millis=5000)
+            typed_value = received.value()
+            consumer.acknowledge(received)
+
+            assert isinstance(typed_value, MyMessage)
+            assert typed_value.field == 'value'
+
+            consumer.close()
+            producer.close()
+            client.close()
         """
 
         def __init__(self, record_cls):

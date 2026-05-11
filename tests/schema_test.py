@@ -20,8 +20,6 @@
 
 import base64
 import math
-import os
-import sys
 import requests
 from typing import List
 from unittest import TestCase, main
@@ -32,10 +30,67 @@ from pulsar.schema import *
 from enum import Enum
 import json
 from fastavro.schema import load_schema
+from google.protobuf import descriptor_pb2, descriptor_pool, message_factory
 
-# Make generated protobuf test classes importable
-sys.path.insert(0, os.path.dirname(__file__))
-from test_schema_pb2 import TestMessage, TestMessageWithNested, TestInner
+
+def _add_protobuf_field(message, name, number, field_type, type_name=None):
+    field = message.field.add()
+    field.name = name
+    field.number = number
+    field.label = descriptor_pb2.FieldDescriptorProto.LABEL_OPTIONAL
+    field.type = field_type
+    if type_name:
+        field.type_name = type_name
+
+
+def _get_message_classes(pool, message_names):
+    if hasattr(message_factory, 'GetMessageClass'):
+        return tuple(
+            message_factory.GetMessageClass(pool.FindMessageTypeByName(message_name))
+            for message_name in message_names
+        )
+    factory = message_factory.MessageFactory(pool)
+    return tuple(
+        factory.GetPrototype(pool.FindMessageTypeByName(message_name))
+        for message_name in message_names
+    )
+
+
+def _build_protobuf_test_messages():
+    file_proto = descriptor_pb2.FileDescriptorProto()
+    file_proto.name = 'test_schema.proto'
+    file_proto.package = 'test'
+    file_proto.syntax = 'proto3'
+
+    test_message = file_proto.message_type.add()
+    test_message.name = 'TestMessage'
+    _add_protobuf_field(test_message, 'name', 1, descriptor_pb2.FieldDescriptorProto.TYPE_STRING)
+    _add_protobuf_field(test_message, 'value', 2, descriptor_pb2.FieldDescriptorProto.TYPE_INT32)
+
+    nested_message = file_proto.message_type.add()
+    nested_message.name = 'TestMessageWithNested'
+    _add_protobuf_field(nested_message, 'str_field', 1, descriptor_pb2.FieldDescriptorProto.TYPE_STRING)
+    _add_protobuf_field(nested_message, 'int_field', 2, descriptor_pb2.FieldDescriptorProto.TYPE_INT32)
+    _add_protobuf_field(nested_message, 'double_field', 3, descriptor_pb2.FieldDescriptorProto.TYPE_DOUBLE)
+    _add_protobuf_field(
+        nested_message, 'nested', 4, descriptor_pb2.FieldDescriptorProto.TYPE_MESSAGE, '.test.TestInner'
+    )
+
+    inner_message = file_proto.message_type.add()
+    inner_message.name = 'TestInner'
+    _add_protobuf_field(inner_message, 'inner_str', 1, descriptor_pb2.FieldDescriptorProto.TYPE_STRING)
+    _add_protobuf_field(inner_message, 'inner_int', 2, descriptor_pb2.FieldDescriptorProto.TYPE_INT64)
+
+    pool = descriptor_pool.DescriptorPool()
+    pool.AddSerializedFile(file_proto.SerializeToString())
+    return _get_message_classes(
+        pool,
+        ('test.TestMessage', 'test.TestMessageWithNested', 'test.TestInner'),
+    )
+
+
+TestMessage, TestMessageWithNested, TestInner = _build_protobuf_test_messages()
+
 
 class ExampleRecord(Record):
     str_field = String()

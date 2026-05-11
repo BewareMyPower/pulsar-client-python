@@ -79,7 +79,7 @@ extras_require = {}
 # protobuf schema dependencies
 extras_require["protobuf"] = sorted(
     {
-      "protobuf>=3.6.1",
+      "protobuf>=6.33.6",
     }
 )
 
