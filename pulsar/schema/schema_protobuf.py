@@ -44,13 +44,18 @@ def _collect_file_descriptors(file_descriptor, visited, file_descriptor_set):
 
 def _build_schema_definition(descriptor):
     """
-    Build the schema definition dict matching Java's ProtobufNativeSchemaData format:
-      {
-        "fileDescriptorSet": <base64-encoded FileDescriptorSet bytes>,
-        "rootMessageTypeName": <full name of the root message>,
-        "rootFileDescriptorName": <name of the root .proto file>
-      }
-    This mirrors ProtobufNativeSchemaUtils.serialize() in the Java client.
+    Build the schema definition dict used by Java's ``ProtobufNativeSchemaData``.
+
+    The returned mapping has these keys:
+
+    .. code-block:: text
+
+        fileDescriptorSet
+        rootMessageTypeName
+        rootFileDescriptorName
+
+    ``fileDescriptorSet`` contains base64-encoded ``FileDescriptorSet`` bytes.
+    This mirrors ``ProtobufNativeSchemaUtils.serialize()`` in the Java client.
     """
     file_descriptor_set = descriptor_pb2.FileDescriptorSet()
     _collect_file_descriptors(descriptor.file, set(), file_descriptor_set)
