@@ -76,14 +76,21 @@ dependencies = [
 
 extras_require = {}
 
+# protobuf schema dependencies
+extras_require["protobuf"] = sorted(
+    {
+      "protobuf>=3.6.1",
+    }
+)
+
 # functions dependencies
 extras_require["functions"] = sorted(
     {
-      "protobuf>=3.6.1",
       "grpcio>=1.59.3",
       "apache-bookkeeper-client>=4.16.1",
       "prometheus_client",
-      "ratelimit"
+      "ratelimit",
+      *extras_require["protobuf"],
     }
 )
 
