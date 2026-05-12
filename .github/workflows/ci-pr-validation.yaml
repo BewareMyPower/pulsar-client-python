@@ -78,7 +78,7 @@ jobs:
             python3 -m pip install -U pip setuptools wheel requests
             python3 setup.py bdist_wheel
             WHEEL=$(find dist -name '*.whl')
-            pip3 install ${WHEEL}[avro]
+            pip3 install ${WHEEL}[avro,protobuf]
 
       - name: Run Oauth2 tests
         run: |

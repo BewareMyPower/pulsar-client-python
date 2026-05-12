@@ -22,3 +22,4 @@ from .definition import Record, Field, Null, Boolean, Integer, Long, \
 
 from .schema import Schema, BytesSchema, StringSchema, JsonSchema
 from .schema_avro import AvroSchema
+from .schema_protobuf import ProtobufNativeSchema
