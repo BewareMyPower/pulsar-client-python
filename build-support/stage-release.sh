@@ -42,9 +42,11 @@ mv $TAG.tar.gz pulsar-client-python-$VERSION.tar.gz
 
 # Download the Python wheels
 URLS=$(curl -L https://api.github.com/repos/apache/pulsar-client-python/actions/runs/$WORKFLOW_ID/artifacts \
-  | jq '.artifacts[] .archive_download_url' | sed 's/^"\(.*\)"$/\1/')
+  | jq -r '.artifacts[]
+      | select(((.name // "") | contains("dockerbuild")) | not)
+      | .archive_download_url')
 for URL in $URLS; do
-    curl -O -L $URL -H "Accept: application/vnd.github+json" -H "Authorization: Bearer $GITHUB_TOKEN"
+    curl -O -L "$URL" -H "Accept: application/vnd.github+json" -H "Authorization: Bearer $GITHUB_TOKEN"
     unzip -q zip
     rm -f zip
 done
