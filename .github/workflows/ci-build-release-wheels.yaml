@@ -32,7 +32,7 @@ jobs:
   linux-wheel:
     name: Wheel ${{matrix.image.name}} - Py ${{matrix.python.version}} - ${{matrix.cpu.platform}}
     runs-on: ubuntu-latest
-    timeout-minutes: 300
+    timeout-minutes: 360
 
     strategy:
       fail-fast: false
@@ -95,7 +95,7 @@ jobs:
   mac-wheels:
     name: Wheel MacOS Universal2 - Py ${{matrix.py.version}}
     runs-on: macos-14
-    timeout-minutes: 300
+    timeout-minutes: 360
 
     strategy:
       fail-fast: false
@@ -125,7 +125,7 @@ jobs:
     runs-on: windows-2022
     env:
       PULSAR_CPP_DIR: 'C:\\pulsar-cpp'
-    timeout-minutes: 300
+    timeout-minutes: 360
 
     strategy:
       fail-fast: false
